@@ -1,8 +1,20 @@
+//! src/main.rs
+
 use std::{error::Error, net::TcpListener};
+
+use blog_backend::configuration;
+use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind("127.0.0.1:8000")?;
-    blogb::run(listener)?.await?;
+    let configuration = configuration::get_configuration().expect("Failed to read configuration");
+    let connection_pool = PgPool::connect(&configuration.database.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
+
+    let address = format!("127.0.0.1:{}", configuration.application_port);
+    let listener = TcpListener::bind(address)?;
+    blog_backend::startup::run(listener, connection_pool)?.await?;
+
     Ok(())
 }

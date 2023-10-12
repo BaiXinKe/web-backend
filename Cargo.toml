@@ -1,5 +1,5 @@
 [package]
-name = "blogb"
+name = "blog_backend"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,14 +10,29 @@ path = "src/lib.rs"
 
 [[bin]]
 path = "src/main.rs"
-name = "zero2prod"
+name = "blog_backend"
 
 
 [dependencies]
 axum = "0.6.20"
+chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
+config = { version = "0.13.3", default-features = false, features = [
+    "yaml",
+    "json",
+] }
 hyper = { version = "0.14.27", features = ["tcp", "server"] }
+serde = { version = "1.0.188", features = ["derive"] }
+sqlx = { version = "0.7.2", default-features = false, features = [
+    "runtime-tokio-rustls",
+    "macros",
+    "postgres",
+    "chrono",
+    "migrate",
+    "uuid",
+] }
 tokio = { version = "1.33.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
+uuid = { version = "1.4.1", features = ["v4"] }
 
 [dev-dependencies]
 reqwest = "0.11.22"
