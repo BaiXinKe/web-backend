@@ -44,7 +44,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> hyper::Result<App> {
             .with_state(db_pool.clone())
             .layer(
                 ServiceBuilder::new()
-                    .set_x_request_id(MakeRequestUuid::default())
+                    .set_x_request_id(MakeRequestUuid)
                     .layer(
                         TraceLayer::new_for_http()
                             .make_span_with(
