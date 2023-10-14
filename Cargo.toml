@@ -16,11 +16,16 @@ name = "blog_backend"
 [dependencies]
 axum = "0.6.20"
 chrono = { version = "0.4.31", default-features = false, features = ["clock"] }
+claims = "0.7.1"
 config = { version = "0.13.3", default-features = false, features = [
     "yaml",
     "json",
 ] }
+fake = "2.8.0"
 hyper = { version = "0.14.27", features = ["tcp", "server"] }
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
+rand = "0.8.5"
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.188", features = ["derive"] }
 serde-aux = "4.2.0"
@@ -42,7 +47,9 @@ tracing-subscriber = { version = "0.3.17", features = [
     "registry",
     "env-filter",
 ] }
+unicode-segmentation = "1.10.1"
 uuid = { version = "1.4.1", features = ["v4"] }
+validator = "0.16.1"
 
 [dev-dependencies]
 once_cell = "1.18.0"
