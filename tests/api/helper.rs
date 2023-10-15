@@ -4,6 +4,7 @@ use blog_backend::{
     telemetry::{get_subscriber, init_subscriber},
 };
 
+use hyper::header;
 use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -35,6 +36,7 @@ impl TestApp {
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/subscriptions", &self.address))
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(body)
             .send()
             .await

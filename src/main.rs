@@ -1,12 +1,11 @@
 //! src/main.rs
 
-use std::{error::Error};
+use std::error::Error;
 
 use blog_backend::{
     configuration,
     telemetry::{get_subscriber, init_subscriber},
 };
-
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
