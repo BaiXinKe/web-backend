@@ -16,6 +16,13 @@ use tower_http::{
     ServiceBuilderExt,
 };
 
+use crate::{
+    application_state::ApplicationState,
+    configuration::{DatabaseSettings, Settings},
+    email_client::EmailClient,
+    routes::{confirm, health_check, subscribe},
+};
+
 use tracing::Level;
 use uuid::Uuid;
 
@@ -46,7 +53,12 @@ impl Application {
         );
         let listener = TcpListener::bind(address).expect("Failed to bind address");
         let port = listener.local_addr().unwrap().port();
-        let server = run(listener, connection_pool, email_client)?;
+        let server = run(
+            listener,
+            connection_pool,
+            email_client,
+            configuration.application.base_url,
+        )?;
 
         Ok(Self { port, server })
     }
@@ -77,25 +89,27 @@ impl MakeRequestId for MakeRequestUuid {
     }
 }
 
-use crate::{
-    configuration::{DatabaseSettings, Settings},
-    email_client::EmailClient,
-    routes::{health_check, subscribe},
-};
+#[derive(Clone)]
+pub struct ApplicationBaseUrl(pub String);
 
 fn run(
     listener: TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
+    base_url: String,
 ) -> hyper::Result<AppServer> {
-    let email_client = Arc::new(email_client);
+    let app_state = ApplicationState::new(
+        db_pool,
+        Arc::new(email_client),
+        Arc::new(ApplicationBaseUrl(base_url)),
+    );
 
     Ok(axum::Server::from_tcp(listener)?.serve(
         axum::Router::new()
             .route("/health_check", get(health_check))
             .route("/subscriptions", post(subscribe))
-            .with_state(db_pool.clone())
-            .with_state(email_client.clone())
+            .route("/subscriptions/confirm", get(confirm))
+            .with_state(app_state)
             .layer(
                 ServiceBuilder::new()
                     .set_x_request_id(MakeRequestUuid)
