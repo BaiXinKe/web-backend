@@ -1,17 +1,43 @@
 //! src/routes/subscriptions_confirm.rs
 
+use anyhow::Context;
 use axum::{
     extract::{Query, State},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
 use hyper::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::routes::error_chain_fmt;
+
 #[derive(Deserialize)]
 pub struct Parameters {
     subscription_token: String,
+}
+
+#[derive(thiserror::Error)]
+pub enum ConfirmationError {
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
+    #[error("There is no subscriber associated with the provided token.")]
+    UnknownToken,
+}
+
+impl std::fmt::Debug for ConfirmationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        error_chain_fmt(self, f)
+    }
+}
+
+impl IntoResponse for ConfirmationError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Self::UnexpectedError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            Self::UnknownToken => (StatusCode::UNAUTHORIZED).into_response(),
+        }
+    }
 }
 
 #[allow(clippy::async_yields_async)]
@@ -19,22 +45,17 @@ pub struct Parameters {
 pub async fn confirm(
     parameters: Query<Parameters>,
     State(pool): State<PgPool>,
-) -> impl IntoResponse {
-    let id = match get_subscriber_id_from_token(&pool, &parameters.subscription_token).await {
-        Ok(id) => id,
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-    };
+) -> Result<Response, ConfirmationError> {
+    let subscriber_id = get_subscriber_id_from_token(&pool, &parameters.subscription_token)
+        .await
+        .context("Failed to retrieve the subcriber id associated with the provided token.")?
+        .ok_or(ConfirmationError::UnknownToken)?;
 
-    match id {
-        // Non-existing token!
-        None => StatusCode::INTERNAL_SERVER_ERROR,
-        Some(subscriber_id) => {
-            if confirm_subscriber(&pool, subscriber_id).await.is_err() {
-                return StatusCode::INTERNAL_SERVER_ERROR;
-            }
-            StatusCode::OK
-        }
-    }
+    confirm_subscriber(&pool, subscriber_id)
+        .await
+        .context("Failed to update the subscriber status to `confirmed`.")?;
+
+    Ok(StatusCode::OK.into_response())
 }
 
 #[allow(clippy::async_yields_async)]
