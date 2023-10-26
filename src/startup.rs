@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use hyper::server::conn::AddrIncoming;
+use secrecy::Secret;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tower::ServiceBuilder;
 
@@ -20,7 +21,7 @@ use crate::{
     application_state::ApplicationState,
     configuration::{DatabaseSettings, Settings},
     email_client::EmailClient,
-    routes::{confirm, health_check, publish_newsletter, subscribe},
+    routes::{confirm, health_check, home, login, login_form, publish_newsletter, subscribe},
 };
 
 use tracing::Level;
@@ -58,6 +59,7 @@ impl Application {
             connection_pool,
             email_client,
             configuration.application.base_url,
+            configuration.application.hmac_secret,
         )?;
 
         Ok(Self { port, server })
@@ -97,11 +99,13 @@ fn run(
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
+    hmac_secret: Secret<String>,
 ) -> hyper::Result<AppServer> {
     let app_state = ApplicationState::new(
         db_pool,
         Arc::new(email_client),
         Arc::new(ApplicationBaseUrl(base_url)),
+        HmacSecret(hmac_secret),
     );
 
     Ok(axum::Server::from_tcp(listener)?.serve(
@@ -110,6 +114,8 @@ fn run(
             .route("/subscriptions", post(subscribe))
             .route("/subscriptions/confirm", get(confirm))
             .route("/newsletters", post(publish_newsletter))
+            .route("/", get(home))
+            .route("/login", get(login_form).post(login))
             .with_state(app_state)
             .layer(
                 ServiceBuilder::new()
@@ -128,3 +134,6 @@ fn run(
             .into_make_service(),
     ))
 }
+
+#[derive(Clone)]
+pub struct HmacSecret(pub Secret<String>);
