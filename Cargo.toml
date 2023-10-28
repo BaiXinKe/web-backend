@@ -55,7 +55,7 @@ tracing-subscriber = { version = "0.3.17", features = [
 unicode-segmentation = "1.10.1"
 uuid = { version = "1.4.1", features = ["v4"] }
 validator = "0.16.1"
-reqwest = { version = "0.11.22", features = ["json"] }
+reqwest = { version = "0.11.22", features = ["json", "rustls-tls", "cookies"] }
 wiremock = "0.5.19"
 serde_json = "1.0.107"
 linkify = "0.10.0"
@@ -69,6 +69,8 @@ htmlescape = "0.3.1"
 hmac = { version = "0.12.1", features = ["std"] }
 sha2 = "0.10.8"
 hex = "0.4.3"
+axum-extra = { version = "0.8.0", features = ["async-read-body", "cookie", "cookie-key-expansion", "cookie-private", "cookie-signed"] }
+cookie = "0.18.0"
 
 [dev-dependencies]
 once_cell = "1.18.0"

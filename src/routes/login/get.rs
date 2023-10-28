@@ -1,55 +1,26 @@
 //! src/routes/login/get.rs
+
 use axum::{
-    extract::{Query, State},
     http::header,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
-use hmac::{Hmac, Mac};
+use axum_extra::extract::CookieJar;
 use hyper::StatusCode;
-use secrecy::ExposeSecret;
 
-use crate::startup::HmacSecret;
-
-#[derive(serde::Deserialize)]
-pub struct QueryParams {
-    error: String,
-    tag: String,
-}
-
-impl QueryParams {
-    fn verfiy(self, secret: &HmacSecret) -> Result<String, anyhow::Error> {
-        let tag = hex::decode(self.tag)?;
-        let query_string = format!("error={}", urlencoding::Encoded::new(&self.error));
-
-        let mut mac =
-            Hmac::<sha2::Sha256>::new_from_slice(secret.0.expose_secret().as_bytes()).unwrap();
-        mac.update(query_string.as_bytes());
-        mac.verify_slice(&tag)?;
-
-        Ok(self.error)
-    }
-}
-
-pub async fn login_form(
-    State(secret): State<HmacSecret>,
-    Query(query): Query<Option<QueryParams>>,
-) -> impl IntoResponse {
-    let error_html = match query {
+pub async fn login_form(cookie_jar: CookieJar) -> Response {
+    let error_html = match cookie_jar.get("_flash") {
         None => "".into(),
-        Some(query) => match query.verfiy(&secret) {
-            Ok(error) => {
-                format!("<p><i>{}</i></p>", htmlescape::encode_minimal(&error))
-            }
-            Err(e) => {
-                tracing::warn!(error.message = %e, error.cause_chain=?e, "Failed to verify query parameters using the HMAC tag");
-                "".into()
-            }
-        },
+        Some(cookie) => {
+            format!("<p><i>{}</i></p>", cookie.value())
+        }
     };
 
     (
         StatusCode::OK,
-        [(header::CONTENT_TYPE, "text/html")],
+        [
+            (header::CONTENT_TYPE, "text/html"),
+            (header::SET_COOKIE, "_flash=; Max-Age=0"),
+        ],
         format!(
             r#"
             <!DOCTYPE html>
@@ -82,4 +53,5 @@ pub async fn login_form(
             "#
         ),
     )
+        .into_response()
 }
